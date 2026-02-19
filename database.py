@@ -171,6 +171,14 @@ def salvar_lancamento(
         ).fetchone()
         lancamento_id = row["id"]
 
+        # Carregar métricas existentes antes de deletar (usado como fallback)
+        existing_metricas = {
+            row["produto_id"]: dict(row)
+            for row in conn.execute(
+                "SELECT * FROM metricas_produto WHERE lancamento_id = ?", (lancamento_id,)
+            ).fetchall()
+        }
+
         # Limpar métricas antigas e inserir novas
         conn.execute("DELETE FROM metricas_produto WHERE lancamento_id = ?", (lancamento_id,))
 
@@ -181,16 +189,26 @@ def salvar_lancamento(
 
         if metricas_produtos:
             for m in metricas_produtos:
+                ex = existing_metricas.get(m["produto_id"], {})
+                # Se o formulário enviou zeros mas o BD já tinha dados, preservar BD
+                form_vazio = not any([m["investimento"], m["leads"], m["vendas"], m["faturamento"]])
+                tinha_dados = any([ex.get("investimento"), ex.get("leads"), ex.get("vendas"), ex.get("faturamento")])
+                if form_vazio and tinha_dados:
+                    inv_s = ex["investimento"]; leads_s = ex["leads"]
+                    vendas_s = ex["vendas"]; fat_s = ex["faturamento"]
+                else:
+                    inv_s = m["investimento"]; leads_s = m["leads"]
+                    vendas_s = m["vendas"]; fat_s = m["faturamento"]
                 conn.execute(
                     """INSERT INTO metricas_produto
                        (lancamento_id, produto_id, investimento, leads, vendas, faturamento)
                        VALUES (?, ?, ?, ?, ?, ?)""",
-                    (lancamento_id, m["produto_id"], m["investimento"], m["leads"], m["vendas"], m["faturamento"]),
+                    (lancamento_id, m["produto_id"], inv_s, leads_s, vendas_s, fat_s),
                 )
-                total_inv += m["investimento"]
-                total_leads += m["leads"]
-                total_vendas += m["vendas"]
-                total_fat += m["faturamento"]
+                total_inv += inv_s
+                total_leads += leads_s
+                total_vendas += vendas_s
+                total_fat += fat_s
         else:
             total_inv = investimento
 
