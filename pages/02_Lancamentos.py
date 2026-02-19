@@ -52,13 +52,6 @@ if existente:
     for m in obter_metricas_produto(existente["id"]):
         metricas_existentes[m["produto_id"]] = m
 
-# Se acabou de salvar, limpa chaves dos widgets ANTES de criá-los
-# para que o value= carregado do BD seja respeitado
-if st.session_state.pop("_refresh_form", False):
-    for p in produtos:
-        for prefix in ["i_", "l_", "v_", "f_"]:
-            st.session_state.pop(f"{prefix}{p['id']}", None)
-
 with st.form("lancamento", clear_on_submit=False):
     metricas_form = []
     investimento_generico = 0.0
@@ -69,25 +62,26 @@ with st.form("lancamento", clear_on_submit=False):
             st.caption(f"📦 {p['nome']}")
             existing = metricas_existentes.get(p["id"], {})
             pc1, pc2, pc3, pc4 = st.columns(4)
+            ctx = f"{cliente_id}_{data_sel.isoformat()}"
             inv = pc1.number_input(
                 "Investimento (R$)", min_value=0.0, step=10.0,
                 value=existing.get("investimento", 0.0),
-                key=f"i_{p['id']}",
+                key=f"i_{p['id']}_{ctx}",
             )
             leads = pc2.number_input(
                 "Leads", min_value=0, step=1,
                 value=existing.get("leads", 0),
-                key=f"l_{p['id']}",
+                key=f"l_{p['id']}_{ctx}",
             )
             vendas = pc3.number_input(
                 "Vendas", min_value=0, step=1,
                 value=existing.get("vendas", 0),
-                key=f"v_{p['id']}",
+                key=f"v_{p['id']}_{ctx}",
             )
             faturamento = pc4.number_input(
                 "Faturamento (R$)", min_value=0.0, step=10.0,
                 value=existing.get("faturamento", 0.0),
-                key=f"f_{p['id']}",
+                key=f"f_{p['id']}_{ctx}",
             )
             metricas_form.append({
                 "produto_id": p["id"],
@@ -116,7 +110,6 @@ with st.form("lancamento", clear_on_submit=False):
             cliente_id, data_sel.isoformat(), investimento_generico, obs,
             metricas_form if produtos else None,
         )
-        st.session_state["_refresh_form"] = True
         st.success(f"Lançamento {'atualizado' if existente else 'salvo'}!")
         st.rerun()
 
