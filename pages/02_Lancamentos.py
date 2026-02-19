@@ -109,6 +109,15 @@ with st.form("lancamento", clear_on_submit=False):
             cliente_id, data_sel.isoformat(), investimento_generico, obs,
             metricas_form if produtos else None,
         )
+        # Sincroniza session_state com o BD para garantir valores corretos no próximo render
+        saved = obter_lancamento(cliente_id, data_sel.isoformat())
+        if saved and produtos:
+            for m in obter_metricas_produto(saved["id"]):
+                pid = m["produto_id"]
+                st.session_state[f"i_{pid}"] = m["investimento"]
+                st.session_state[f"l_{pid}"] = m["leads"]
+                st.session_state[f"v_{pid}"] = m["vendas"]
+                st.session_state[f"f_{pid}"] = m["faturamento"]
         st.success(f"Lançamento {'atualizado' if existente else 'salvo'}!")
         st.rerun()
 

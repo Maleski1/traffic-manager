@@ -154,11 +154,16 @@ def salvar_lancamento(
     usa o parâmetro investimento direto.
     """
     with _conn() as conn:
+        # INSERT OR IGNORE preserva o id existente (evita CASCADE delete nas métricas)
         conn.execute(
-            """INSERT OR REPLACE INTO lancamentos
+            """INSERT OR IGNORE INTO lancamentos
                (cliente_id, data, investimento, leads, vendas, faturamento, observacao)
-               VALUES (?, ?, ?, 0, 0, 0.0, ?)""",
-            (cliente_id, data, investimento, observacao),
+               VALUES (?, ?, 0, 0, 0, 0.0, ?)""",
+            (cliente_id, data, observacao),
+        )
+        conn.execute(
+            "UPDATE lancamentos SET observacao = ? WHERE cliente_id = ? AND data = ?",
+            (observacao, cliente_id, data),
         )
         row = conn.execute(
             "SELECT id FROM lancamentos WHERE cliente_id = ? AND data = ?",
